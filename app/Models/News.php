@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class News extends Model
+{
+    use HasFactory;
+
+    protected $table = 'news';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
+
+    protected $fillable = [
+        'title',
+        'slug',
+        'content',
+        'image',
+        'public_id',
+    ];
+
+    public function images()
+    {
+        return $this->hasMany(\App\Models\NewsImage::class);
+    }
+}
