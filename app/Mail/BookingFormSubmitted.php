@@ -3,10 +3,11 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class BookingFormSubmitted extends Mailable
+class BookingFormSubmitted extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

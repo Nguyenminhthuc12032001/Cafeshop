@@ -318,9 +318,16 @@ document.addEventListener("alpine:init", () => {
         return false;
       }
 
+      const btn = event.currentTarget;
+      const form = btn.closest("form");
+
+      if (form && typeof form.checkValidity === "function" && !form.checkValidity()) {
+        form.reportValidity();
+        return false;
+      }
+
       this.loading = true;
 
-      const btn = event.currentTarget;
       btn.classList.add("pointer-events-none", "opacity-70");
       btn.innerHTML = `
         <svg class="animate-spin w-4 h-4 inline-block mr-2 text-current"
@@ -348,6 +355,12 @@ document.addEventListener("livewire:navigated", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   refreshLucide();
+});
+
+window.addEventListener("pageshow", () => {
+  document.querySelectorAll("button[data-loading]").forEach((btn) => {
+    btn.classList.remove("pointer-events-none", "opacity-70");
+  });
 });
 
 document.addEventListener("livewire:init", () => {
