@@ -287,57 +287,6 @@ document.addEventListener("alpine:init", () => {
 
 // ===== helpers =====
 const refreshLucide = () => window.lucide?.createIcons?.();
-const getCurrentLang = () => window.localStorage?.getItem("lang") || "vi";
-
-function renderLoadingButton(button) {
-  const label =
-    getCurrentLang() === "en"
-      ? button.dataset.loadingEn || "Processing..."
-      : button.dataset.loadingVi || "Đang xử lý...";
-
-  return `
-    <svg class="animate-spin w-4 h-4 inline-block mr-2 text-current"
-         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10"
-              stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-    </svg>
-    <span data-vi="Đang xử lý..." data-en="Processing...">${label}</span>
-  `;
-}
-
-function startLoadingButton(button) {
-  if (!button || button.dataset.loadingActive === "true") return;
-
-  if (!button._loadingOriginalHtml) {
-    button._loadingOriginalHtml = button.innerHTML;
-    button._loadingOriginalDisabled = button.disabled;
-  }
-
-  button.dataset.loadingActive = "true";
-  button.disabled = true;
-  button.setAttribute("aria-busy", "true");
-  button.classList.add("pointer-events-none", "opacity-70");
-  button.innerHTML = renderLoadingButton(button);
-}
-
-function resetLoadingButton(button) {
-  if (!button) return;
-  if (!button._loadingOriginalHtml) return;
-
-  button.dataset.loadingActive = "false";
-  button.disabled = button._loadingOriginalDisabled ?? false;
-  button.removeAttribute("aria-busy");
-  button.classList.remove("pointer-events-none", "opacity-70");
-  button.innerHTML = button._loadingOriginalHtml;
-}
-
-function resetAllLoadingButtons() {
-  document.querySelectorAll("button[data-loading]").forEach((button) => {
-    resetLoadingButton(button);
-  });
-}
 
 // ===== Alpine init (đưa từ Blade qua đây) =====
 document.addEventListener("alpine:init", () => {
@@ -362,57 +311,39 @@ document.addEventListener("alpine:init", () => {
   // Loading button component
   Alpine.data("loadingButton", () => ({
     loading: false,
-    init() {
-      const button = this.$el;
-      const form = button.form ?? button.closest("form");
-
-      if (!form) return;
-
-      this.form = form;
-      this.onSubmit = (event) => {
-        if (this.loading) {
-          event.preventDefault();
-          return;
-        }
-
-        const submitter = event.submitter;
-
-        if (submitter && submitter !== button) return;
-
-        if (!submitter) {
-          const firstSubmitter = form.querySelector('button[type="submit"], input[type="submit"]');
-          if (firstSubmitter && firstSubmitter !== button) return;
-        }
-
-        queueMicrotask(() => {
-          if (event.defaultPrevented) return;
-
-          this.loading = true;
-          startLoadingButton(button);
-        });
-      };
-
-      form.addEventListener("submit", this.onSubmit);
-    },
     handleClick(event) {
-      if (!this.loading) return;
+      if (this.loading) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
 
-      event.preventDefault();
-      event.stopPropagation();
-      return false;
+      this.loading = true;
+
+      const btn = event.currentTarget;
+      btn.classList.add("pointer-events-none", "opacity-70");
+      btn.innerHTML = `
+        <svg class="animate-spin w-4 h-4 inline-block mr-2 text-current"
+             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10"
+                  stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        <span data-vi="Đang xử lý..." data-en="Processing..."></span>
+      `;
     },
   }));
 });
 
 // ===== Livewire events (không import Livewire, chỉ nghe event) =====
 document.addEventListener("livewire:navigated", () => {
-  resetAllLoadingButtons();
   refreshLucide();
-});
 
-window.addEventListener("pageshow", () => {
-  resetAllLoadingButtons();
-  refreshLucide();
+  // reset loading button
+  document.querySelectorAll("button[data-loading]").forEach((btn) => {
+    btn.classList.remove("pointer-events-none", "opacity-70");
+  });
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -586,7 +517,7 @@ window.cartOrderForm = (initial = [], endpoints = {}) => ({
   },
 
   formatMoney(v) {
-    return Number(v || 0).toLocaleString("vi-VN") + " " + String.fromCharCode(0x20AB);
+    return "₫" + Number(v || 0).toLocaleString("vi-VN");
   },
 
   formatDate(yyyy_mm_dd) {
@@ -881,7 +812,7 @@ document.addEventListener('alpine:init', () => {
 
       formatVND(n) {
         const val = Number(n) || 0;
-        return new Intl.NumberFormat('vi-VN').format(val) + ' ' + String.fromCharCode(0x20AB);
+        return new Intl.NumberFormat('vi-VN').format(val) + '₫';
       },
 
       // toast + lightbox
@@ -962,10 +893,6 @@ function initMenuSwipers() {
     if (featuredEl.swiper) featuredEl.swiper.destroy(true, true);
 
     new Swiper(featuredEl, {
-      navigation: {
-        nextEl: featuredEl.querySelector(".featuredNext"),
-        prevEl: featuredEl.querySelector(".featuredPrev"),
-      },
       loop: true,
       speed: 700,
       spaceBetween: 18,
@@ -973,9 +900,6 @@ function initMenuSwipers() {
         el: featuredEl.querySelector(".featuredPagination"),
         clickable: true,
       },
-      watchOverflow: true,
-      observer: true,
-      observeParents: true,
       breakpoints: {
         0: { slidesPerView: 1.05 },
         480: { slidesPerView: 1.2 },
