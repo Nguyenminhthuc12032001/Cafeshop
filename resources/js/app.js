@@ -362,44 +362,27 @@ document.addEventListener("alpine:init", () => {
   // Loading button component
   Alpine.data("loadingButton", () => ({
     loading: false,
-    init() {
-      const button = this.$el;
-      const form = button.form ?? button.closest("form");
-
-      if (!form) return;
-
-      this.form = form;
-      this.onSubmit = (event) => {
-        if (this.loading) {
-          event.preventDefault();
-          return;
-        }
-
-        const submitter = event.submitter;
-
-        if (submitter && submitter !== button) return;
-
-        if (!submitter) {
-          const firstSubmitter = form.querySelector('button[type="submit"], input[type="submit"]');
-          if (firstSubmitter && firstSubmitter !== button) return;
-        }
-
-        queueMicrotask(() => {
-          if (event.defaultPrevented) return;
-
-          this.loading = true;
-          startLoadingButton(button);
-        });
-      };
-
-      form.addEventListener("submit", this.onSubmit);
-    },
     handleClick(event) {
-      if (!this.loading) return;
+      if (this.loading) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
 
-      event.preventDefault();
-      event.stopPropagation();
-      return false;
+      this.loading = true;
+
+      const btn = event.currentTarget;
+      btn.classList.add("pointer-events-none", "opacity-70");
+      btn.innerHTML = `
+        <svg class="animate-spin w-4 h-4 inline-block mr-2 text-current"
+             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10"
+                  stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        <span data-vi="Đang xử lý..." data-en="Processing..."></span>
+      `;
     },
   }));
 });
@@ -417,6 +400,12 @@ window.addEventListener("pageshow", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   refreshLucide();
+});
+
+window.addEventListener("pageshow", () => {
+  document.querySelectorAll("button[data-loading]").forEach((btn) => {
+    btn.classList.remove("pointer-events-none", "opacity-70");
+  });
 });
 
 document.addEventListener("livewire:init", () => {
