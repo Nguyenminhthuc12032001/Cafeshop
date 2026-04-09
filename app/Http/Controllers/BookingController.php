@@ -103,14 +103,14 @@ class BookingController extends Controller
 
             DB::commit();
 
-            \Mail::to($validated['email'])
-                ->cc(config('mail.from.address'))
-                ->queue(
-                    (new \App\Mail\BookingFormSubmitted([
+            dispatch(function () use ($validated, $booking) {
+                \Mail::to($validated['email'])
+                    ->cc(config('mail.from.address'))
+                    ->send(new \App\Mail\BookingFormSubmitted([
                         ...$validated,
                         'booking_id' => $booking->id,
-                    ]))->afterCommit()
-                );
+                    ]));
+            })->afterResponse();
             return redirect()->back()->with('success', 'Đặt lịch thành công.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -165,14 +165,27 @@ class BookingController extends Controller
 
             $booking->update($validated);
 
-            if ($request->input('status') === 'confirmed') {
-                \Mail::to($booking->user->email)->cc(config('mail.from.address'))
-                    ->queue((new \App\Mail\BookingConfirmed($booking))->afterCommit());
+            $recipientEmail = $booking->user?->email;
+
+            if (!$recipientEmail && in_array($request->input('status'), ['confirmed', 'cancelled'], true)) {
+                logger()->warning('Skipping booking status email because no recipient address was found.', [
+                    'booking_id' => $booking->id,
+                    'status' => $request->input('status'),
+                ]);
             }
 
-            if ($request->input('status') === 'cancelled') {
-                \Mail::to($booking->user->email)->cc(config('mail.from.address'))
-                    ->queue((new \App\Mail\BookingCancelled($booking))->afterCommit());
+            if ($recipientEmail && $request->input('status') === 'confirmed') {
+                dispatch(function () use ($booking, $recipientEmail) {
+                    \Mail::to($recipientEmail)->cc(config('mail.from.address'))
+                        ->send(new \App\Mail\BookingConfirmed($booking));
+                })->afterResponse();
+            }
+
+            if ($recipientEmail && $request->input('status') === 'cancelled') {
+                dispatch(function () use ($booking, $recipientEmail) {
+                    \Mail::to($recipientEmail)->cc(config('mail.from.address'))
+                        ->send(new \App\Mail\BookingCancelled($booking));
+                })->afterResponse();
             }
 
             return redirect()->route('admin.booking.index')
