@@ -50,7 +50,7 @@ class RecentActivity extends Component
         $contacts = Contact::query()->latest()->take(5)->get()->map(fn($c) => [
             'id' => "contact-{$c->id}",
             'title' => 'New contact message',
-            'description' => "{$c->name} sent a message: “" . substr($c->message, 0, 50) . "...”",
+            'description' => "{$c->name} sent a message: “" . mb_substr((string) $c->message, 0, 50, 'UTF-8') . "...”",
             'time' => $c->created_at->diffForHumans(),
             'status' => 'The lastest contact',
             'icon' => 'M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.48 9.48 0 01-4-.9L3 20l1.9-3.8A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
